@@ -77,6 +77,25 @@ def download_table(table_name: str):
         logger.error(f"Erro ao gerar download: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/v1/query", dependencies=[Depends(get_api_key)])
+def execute_query(query: str):
+    """
+    Executa uma query SQL arbitrária usando DuckDB sobre os arquivos Parquet no S3.
+    Exemplo: SELECT * FROM 'tabmovimento.parquet' LIMIT 10
+    """
+    try:
+        # O DuckDB entende 'tabela.parquet' se o arquivo estiver no bucket configurado
+        # Mas para facilitar, o QueryEngine já tem uma função pronta
+        data = query_engine.execute_custom_query(query)
+        return {
+            "query": query,
+            "count": len(data),
+            "data": data
+        }
+    except Exception as e:
+        logger.error(f"Erro ao executar query: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=settings.PORT, reload=True)
