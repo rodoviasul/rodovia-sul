@@ -73,13 +73,13 @@ def exportar_para_parquet():
         for tabela in TABELAS:
             print(f"\n🚀 Processando tabela: {tabela}")
             try:
-                # Obter o total de linhas REAL da tabela antes de aplicar o LIMIT para o parquet de dados
+                # Obter o total de linhas REAL da tabela (sempre o total do banco)
                 cursor = conn.cursor()
                 cursor.execute(f"SELECT COUNT(*) FROM {tabela}")
                 total_linhas_real = cursor.fetchone()[0]
                 cursor.close()
 
-                # Query com LIMIT 10 para teste de integração (dados da amostra)
+                # Query com LIMIT 10 para o arquivo de dados (amostra de teste)
                 query = f"SELECT * FROM {tabela} LIMIT 10"
                 
                 # Ler dados usando pandas
@@ -94,14 +94,16 @@ def exportar_para_parquet():
                 
                 # Salvar em Parquet
                 df.to_parquet(file_path, index=False, engine='pyarrow')
-                print(f"✅ Salvo localmente: {file_path}")
-                print(f"📊 Estatísticas: {len(df.columns)} colunas | {total_linhas_real} linhas totais no banco")
+                
+                # LOG DE ESTATÍSTICAS (Separado por tabela)
+                print(f"✅ Arquivo gerado: {file_path} (Amostra de {len(df)} linhas)")
+                print(f"📊 Banco de Dados: {total_linhas_real} linhas totais encontradas em {tabela}")
 
                 # Fazer upload para o S3
-                s3_key = f"{tabela}.parquet" # Salva diretamente na raiz do bucket 'parquet'
-                print(f"⬆️ Iniciando upload de {tabela} para S3 (bucket: {s3_config['bucket']})...")
+                s3_key = f"{tabela}.parquet"
+                print(f"⬆️ Enviando para S3 (bucket: {s3_config['bucket']})...")
                 s3_client.upload_file(file_path, s3_config['bucket'], s3_key)
-                print(f"🎉 Upload concluído: {s3_key}")
+                print(f"🎉 Upload de {tabela} concluído!")
                 
             except Exception as e:
                 print(f"❌ Erro ao processar {tabela}: {e}")
