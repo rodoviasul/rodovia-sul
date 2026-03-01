@@ -76,7 +76,13 @@ def exportar_para_parquet():
         for tabela in TABELAS:
             print(f"\n🚀 Processando tabela: {tabela}")
             try:
-                # Query com LIMIT 10 para teste de integração
+                # Obter o total de linhas REAL da tabela antes de aplicar o LIMIT para o parquet de dados
+                cursor = conn.cursor()
+                cursor.execute(f"SELECT COUNT(*) FROM {tabela}")
+                total_linhas_real = cursor.fetchone()[0]
+                cursor.close()
+
+                # Query com LIMIT 10 para teste de integração (dados da amostra)
                 query = f"SELECT * FROM {tabela} LIMIT 10"
                 
                 # Ler dados usando pandas
@@ -93,11 +99,12 @@ def exportar_para_parquet():
                 df.to_parquet(file_path, index=False, engine='pyarrow')
                 print(f"✅ Salvo localmente: {file_path}")
 
-                # Adicionar aos metadados
+                # Adicionar aos metadados (usando o total real do banco)
                 metadados_lista.append({
                     'tabela': tabela,
                     'colunas': len(df.columns),
-                    'linhas': len(df)
+                    'linhas_totais_bd': total_linhas_real,
+                    'linhas_amostra_parquet': len(df)
                 })
 
                 # Fazer upload para o S3
