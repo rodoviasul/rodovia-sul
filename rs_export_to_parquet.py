@@ -70,9 +70,6 @@ def exportar_para_parquet():
             os.makedirs(output_dir)
             print(f"📂 Pasta '{output_dir}' criada.")
 
-        # Lista para armazenar metadados das tabelas
-        metadados_lista = []
-
         for tabela in TABELAS:
             print(f"\n🚀 Processando tabela: {tabela}")
             try:
@@ -98,14 +95,7 @@ def exportar_para_parquet():
                 # Salvar em Parquet
                 df.to_parquet(file_path, index=False, engine='pyarrow')
                 print(f"✅ Salvo localmente: {file_path}")
-
-                # Adicionar aos metadados (usando o total real do banco)
-                metadados_lista.append({
-                    'tabela': tabela,
-                    'colunas': len(df.columns),
-                    'linhas_totais_bd': total_linhas_real,
-                    'linhas_amostra_parquet': len(df)
-                })
+                print(f"📊 Estatísticas: {len(df.columns)} colunas | {total_linhas_real} linhas totais no banco")
 
                 # Fazer upload para o S3
                 s3_key = f"{tabela}.parquet" # Salva diretamente na raiz do bucket 'parquet'
@@ -116,19 +106,6 @@ def exportar_para_parquet():
             except Exception as e:
                 print(f"❌ Erro ao processar {tabela}: {e}")
         
-        # ------------------------------------------------------------
-        # Gerar e enviar o arquivo de resumo (metadados)
-        # ------------------------------------------------------------
-        if metadados_lista:
-            print(f"\n📊 Gerando arquivo de resumo: tabelas.parquet")
-            df_resumo = pd.DataFrame(metadados_lista)
-            resumo_path = os.path.join(output_dir, "tabelas.parquet")
-            df_resumo.to_parquet(resumo_path, index=False, engine='pyarrow')
-            
-            print(f"⬆️ Enviando resumo para S3...")
-            s3_client.upload_file(resumo_path, s3_config['bucket'], "tabelas.parquet")
-            print(f"🎉 Resumo enviado com sucesso!")
-
         conn.close()
         print("\n🔒 Processo concluído e conexão fechada.")
                 
