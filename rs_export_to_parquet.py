@@ -69,8 +69,8 @@ def exportar_para_parquet():
         for tabela in TABELAS:
             print(f"\n🚀 Processando tabela: {tabela}")
             try:
-                # Query sem LIMIT para pegar tudo
-                query = f"SELECT * FROM {tabela}"
+                # Query com LIMIT 10 para teste de integração
+                query = f"SELECT * FROM {tabela} LIMIT 10"
                 
                 # Ler dados usando pandas
                 df = pd.read_sql(query, conn)
