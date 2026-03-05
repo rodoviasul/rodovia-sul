@@ -59,6 +59,24 @@ class QueryEngine:
             self.con.execute(query)
             logger.info("Configuração S3 concluída.")
             
+            # Criar views automáticas para facilitar as queries (ex: select * from tabcontas)
+            try:
+                logger.info("Mapeando arquivos Parquet para Views...")
+                s3_path = f"s3://{settings.SUPABASE_BUCKET}/*.parquet"
+                files_query = f"SELECT file FROM glob('{s3_path}')"
+                files = self.con.execute(files_query).df()
+                
+                for f in files['file'].tolist():
+                    f = f.replace('\\', '/')
+                    filename = f.split('/')[-1]
+                    view_name = filename.replace('.parquet', '')
+                    # Cria uma view que aponta para o arquivo no S3
+                    self.con.execute(f"CREATE OR REPLACE VIEW {view_name} AS SELECT * FROM read_parquet('s3://{settings.SUPABASE_BUCKET}/{filename}')")
+                
+                logger.info(f"Sucesso: {len(files)} views criadas automaticamente.")
+            except Exception as e:
+                logger.warning(f"Não foi possível criar as views automáticas: {e}")
+            
             return self.con
             
         except Exception as e:
@@ -89,7 +107,8 @@ class QueryEngine:
 
     def execute_custom_query(self, sql: str):
         """
-        Permite executar SQL arbitrário (com cuidado!)
+        Executa SQL arbitrário. As tabelas já estão mapeadas como views.
+        Exemplo: SELECT * FROM tabcontas LIMIT 10
         """
         try:
             con = self._get_connection()
